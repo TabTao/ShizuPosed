@@ -24,9 +24,8 @@ jobs:
           SDKMANAGER=$(ls -d $ANDROID_SDK_ROOT/cmdline-tools/*/bin/sdkmanager 2>/dev/null | tail -1)
           echo "sdkmanager: $SDKMANAGER"
           yes | "$SDKMANAGER" --licenses > /dev/null || true
-          "$SDKMANAGER" "platforms;android-37" "build-tools;36.0.0" "platform-tools" || \
-          "$SDKMANAGER" --channel=3 "platforms;android-37" "build-tools;36.0.0"
-          "$SDKMANAGER" --list_installed | head -30
+          "$SDKMANAGER" "platforms;android-37.0" "build-tools;37.0.0" "platform-tools"
+          "$SDKMANAGER" --list_installed | head -40
 
       - name: Generate signing key
         run: |
