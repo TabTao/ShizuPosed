@@ -237,6 +237,14 @@ public class XposedHook {
 
     private static void preloadXStealthNative() {
         String libDir = System.getProperty("shizuposed.shell.libs", LIBS_DIR);
+        String shellBase = System.getProperty("shizuposed.shell.base", "");
+        // XStealth 是可选功能：只有 xstealth.json 里 enabled=true 才加载原生库。
+        // 之前在 SDK<35 上无条件 preload，实测在 Android 13 的 OneUI 上 libxstealth.so
+        // 会无限递归把注入进程打死（tombstone 里几百帧同一地址），目标应用因此完全拿不到 hook。
+        if (!isXStealthEnabled(shellBase)) {
+            log("XStealth disabled in config, skipping native preload");
+            return;
+        }
         log("Preloading XStealth native engines from: " + libDir);
 
         if (Build.VERSION.SDK_INT >= 35) {
@@ -277,6 +285,30 @@ public class XposedHook {
             }
         } catch (Throwable t) {
             log("libxstealth_bridge.so preload failed: " + t.getMessage());
+        }
+    }
+
+    /** 读 <shell-base>/modules/xstealth.json 里的 enabled；读不到 / 解析失败一律当关闭 */
+    private static boolean isXStealthEnabled(String shellBase) {
+        if (shellBase == null || shellBase.length() == 0) return false;
+        java.io.File f = new java.io.File(shellBase + "/modules/xstealth.json");
+        if (!f.isFile()) return false;
+        try {
+            byte[] b = new byte[(int) f.length()];
+            java.io.FileInputStream in = new java.io.FileInputStream(f);
+            try {
+                int off = 0;
+                while (off < b.length) {
+                    int n = in.read(b, off, b.length - off);
+                    if (n <= 0) break;
+                    off += n;
+                }
+            } finally {
+                in.close();
+            }
+            return new String(b, "UTF-8").matches("(?s).*\"enabled\"\\s*:\\s*true.*");
+        } catch (Throwable t) {
+            return false;
         }
     }
 
