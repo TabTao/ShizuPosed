@@ -694,6 +694,18 @@ public class XposedHook {
                 log("mCoreSettings setup failed: " + t2);
             }
 
+            // 三星 ROM 的 ConfigurationController.updateDefaultDensity() 会调
+            // getDssScale()，它拿的是 ActivityThread.sCurrentActivityThread；
+            // 这个静态字段不设，handleBindApplication 里必 NPE。
+            try {
+                java.lang.reflect.Field scat = at.getDeclaredField("sCurrentActivityThread");
+                HiddenApiBypass.forceAccessible(scat);
+                scat.set(null, t);
+                log("Set ActivityThread.sCurrentActivityThread");
+            } catch (Throwable t5) {
+                log("sCurrentActivityThread setup failed: " + t5);
+            }
+
             return t;
         } catch (Throwable t) {
             log("ActivityThread constructor threw: " + t + (t.getCause() != null ? " cause=" + t.getCause() : ""));
