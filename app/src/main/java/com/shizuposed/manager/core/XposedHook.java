@@ -660,14 +660,26 @@ public class XposedHook {
                 Class<?> ccClass = Class.forName("android.app.ConfigurationController");
                 Constructor<?> ccCtor = null;
                 for (Constructor<?> c : ccClass.getDeclaredConstructors()) {
-                    if (c.getParameterCount() == 1) {
+                    if (c.getParameterCount() != 1) continue;
+                    String pn = c.getParameterTypes()[0].getName();
+                    // 优先挑吃 ActivityThread / ActivityThreadInternal 的那个构造器
+                    if (pn.contains("ActivityThread")) {
                         ccCtor = c;
                         break;
                     }
+                    if (ccCtor == null) ccCtor = c;
                 }
                 if (ccCtor != null) {
                     HiddenApiBypass.forceAccessible(ccCtor);
                     Object cc = ccCtor.newInstance(t);
+                    // 三星 ROM 把 updateDefaultDensity() 改成调 mActivityThread.getDssScale()，
+                    // 这个字段一空就必 NPE（AOSP 调的是 isInDensityCompatMode）。
+                    try {
+                        setFieldByShape(cc, t, "mActivityThread", "activityThread");
+                        log("Attached ActivityThread to ConfigurationController");
+                    } catch (Throwable t3) {
+                        log("ConfigurationController.mActivityThread setup failed: " + t3);
+                    }
                     setFieldByShape(t, cc, "mConfigurationController", "configurationController");
                     log("Attached ConfigurationController to ActivityThread");
                 }
