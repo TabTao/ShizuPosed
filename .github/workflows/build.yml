@@ -5,6 +5,9 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -43,9 +46,19 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew --no-daemon --stacktrace assembleStandardRelease
+          ls -l app/build/outputs/apk/standard/release/
 
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: ShizuPosed-standard-release
           path: app/build/outputs/apk/standard/release/*.apk
+
+      - name: Publish release asset
+        if: success()
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ci-${{ github.run_number }}
+          name: CI build ${{ github.run_number }}
+          body: Automated build
+          files: app/build/outputs/apk/standard/release/*.apk
